@@ -1,50 +1,158 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html class="no-js" lang="">
+
 <head>
-    <meta charset='utf-8' />
+    <meta charset="utf-8">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
     <title></title>
-    <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
-    <script src='https://api.tiles.mapbox.com/mapbox-gl-js/v0.39.1/mapbox-gl.js'></script>
-    <link href='https://api.tiles.mapbox.com/mapbox-gl-js/v0.39.1/mapbox-gl.css' rel='stylesheet' />
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <style>
-        body { margin:0; padding:0; }
-        #map { position:absolute; top:0; bottom:0; width:100%; }
+    #mapid { height: 600px; }
+
+    .legend {
+    line-height: 18px;
+    color: #555;
+		}
+		.legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+		}
+
+		.info {
+			background: rgba(255, 255, 255, 0.7);
+		}
     </style>
-</style>
+
+     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css"
+   integrity="sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ=="
+   crossorigin=""/>
+
+    <!-- Make sure you put this AFTER Leaflet's CSS -->
+ <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"
+   integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log=="
+   crossorigin=""></script>
+   <script src="https://code.jquery.com/jquery-1.12.0.min.js"></script>
+
 </head>
 <body>
 
-<div id='map'></div>
+ <div id="mapid"></div>
+
+<!-- Include geojson building data layer -->
+<script type="text/javascript" src="buildingsWYears.js"></script>
+
 <script>
-mapboxgl.accessToken = 'pk.eyJ1IjoiZnJpbmdlZGdlbnRpYW4iLCJhIjoiY2o2NnAxOXBkMmZvcDJ3cTdhaDRmazE2dyJ9.RFzxwRRu5jeFggeuVzW12w';
-var map = new mapboxgl.Map({
-    container: 'map', // container id
-    style: 'mapbox://styles/fringedgentian/cj6i96tyh546i2rnkozhmqj67', // stylesheet location
-    center: [-73.20, 44.48], // starting position [lng, lat]
-    zoom: 13.5 // starting zoom
-});
+var mymap = L.map('mapid').setView([44.48, -73.21], 16);
 
-map.on('load', function () {
-    // When a click event occurs on a feature in the states layer, open a popup at the
-    // location of the click, with description HTML from its properties.
-    map.on('click', 'burlingtonbldgswyears-305ib6', function (e) {
-        new mapboxgl.Popup()
-            .setLngLat(e.lngLat)
-            .setHTML(e.features[0].properties.filtered_Y)
-            .addTo(map);
+L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
+    attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
+    maxZoom: 18,
+    id: 'mapbox.dark',
+    accessToken: 'pk.eyJ1IjoiZnJpbmdlZGdlbnRpYW4iLCJhIjoiY2o2NnAxOXBkMmZvcDJ3cTdhaDRmazE2dyJ9.RFzxwRRu5jeFggeuVzW12w'}).addTo(mymap);
+
+
+function style(feature) {
+    return {
+        fillColor: getColor(feature.properties.YearBlt),
+        weight: 1,
+        opacity: 1,  
+        color: 'white',
+        dashArray: '',
+        fillOpacity: 0.8
+    };
+}
+
+function highlightFeature(e) {
+    var layer = e.target;
+
+    layer.setStyle({
+        weight: 1,
+        color: '#666',
+        dashArray: '',
+        fillOpacity: 0.8
     });
 
-    // Change the cursor to a pointer when the mouse is over the states layer.
-    map.on('mouseenter', 'burlingtonbldgswyears-305ib6', function () {
-        map.getCanvas().style.cursor = 'pointer';
-    });
+    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+        layer.bringToFront();
+    }
+    info.update(layer.feature.properties);
+}
 
-    // Change it back to a pointer when it leaves.
-    map.on('mouseleave', 'burlingtonbldgswyears-305ib6', function () {
-        map.getCanvas().style.cursor = '';
+function resetHighlight(e) {
+    geojson.resetStyle(e.target);
+    info.update();
+}
+
+function onEachFeature(feature, layer) {
+    layer.on({
+        mouseover: highlightFeature,
+        mouseout: resetHighlight
     });
-});
+}
+
+geojson = L.geoJson(buildingsWYears, {
+    style: style,
+    onEachFeature: onEachFeature
+}).addTo(mymap);
+
+var info = L.control();
+
+info.onAdd = function (mymap) {
+    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+    this.update();
+    return this._div;
+};
+
+// method that we will use to update the control based on feature properties passed
+info.update = function (props) {
+    this._div.innerHTML = '<h4>Age of Burlington Buildings</h4>' +  (props ?
+        'Built in' + props.YearBlt + ''
+        : 'Hover over a building');
+};
+
+info.addTo(mymap);
+
+function getColor(d) {
+    return d > 2000 ? '#ffffcc' :
+           d > 1980 ? '#ffeda0' :
+           d > 1960 ? '#fed976' :
+           d > 1940 ? '#feb24c' :
+           d > 1920 ? '#fd8d3c' :
+           d > 1900 ? '#fc4e2a' :
+           d > 1880 ? '#e31a1c' :
+                      '#b10026';
+}
+
+var legend = L.control({position: 'bottomright'});
+
+legend.onAdd = function (map) {
+
+    var div = L.DomUtil.create('div', 'info legend'),
+        grades = [1880, 1900, 1920, 1940, 1960, 1980, 2000],
+        labels = [];
+
+    // loop through our density intervals and generate a label with a colored square for each interval
+    for (var i = 0; i < grades.length; i++) {
+        div.innerHTML +=
+            '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
+            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+    }
+
+    return div;
+};
+
+legend.addTo(mymap);
+
+
+
+
 </script>
 
-</body>
+
+ </body>
 </html>
