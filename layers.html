@@ -9,45 +9,40 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <style>
-    #mapid { height: 600px; }
-
-		.info {
-			background: rgba(255, 255, 255, 0.7);
-		}
+        #mapid { height: 600px; }
+		.info { background: rgba(255, 255, 255, 0.7); }
     </style>
 
-     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css"
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.2.0/dist/leaflet.css"
    integrity="sha512-M2wvCLH6DSRazYeZRIm1JnYyh22purTM+FDB5CsyxtQJYeKq83arPe5wgbNmcFXGqiSH2XR8dT/fJISVA1r/zQ=="
    crossorigin=""/>
 
     <!-- Make sure you put this AFTER Leaflet's CSS -->
- <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"
+    <script src="https://unpkg.com/leaflet@1.2.0/dist/leaflet.js"
    integrity="sha512-lInM/apFSqyy1o6s89K4iQUKg6ppXEgsVxT35HbzUupEVRh2Eu9Wdl4tHj7dZO0s1uvplcYGmt3498TtHq+log=="
    crossorigin=""></script>
-   <script src="https://code.jquery.com/jquery-1.12.0.min.js"></script>
 
 </head>
 <body>
 
- <div id="mapid"></div>
+<div id="mapid"></div>
 
-<!-- Include geojson building data layer -->
+<!-- Geojson data layer, created with qGIS, loads as javascript var buildingsWYears -->
 <script type="text/javascript" src="buildingsWYears.js"></script>
 
 <script>
 var mymap = L.map('mapid').setView([44.48, -73.21], 16);
 
 L.tileLayer('https://api.tiles.mapbox.com/v4/{id}/{z}/{x}/{y}.png?access_token={accessToken}', {
-    attribution: 'Map data &copy; <a href="http://openstreetmap.org">OpenStreetMap</a> contributors, <a href="http://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="http://mapbox.com">Mapbox</a>',
     maxZoom: 18,
     id: 'mapbox.dark',
     accessToken: 'pk.eyJ1IjoiZnJpbmdlZGdlbnRpYW4iLCJhIjoiY2o2NnAxOXBkMmZvcDJ3cTdhaDRmazE2dyJ9.RFzxwRRu5jeFggeuVzW12w'}).addTo(mymap);
 
 
-//Create one layer for each segment of data using the filter option
+//Create one layer for each segment of data using the filter option and display on map
 var over2000 = L.geoJson(buildingsWYears, {
     style: {
-            fillColor: '#ffffcc',
+        fillColor: '#ffffcc',
         weight: 1,
         opacity: 1,  
         color: 'white',
@@ -61,7 +56,7 @@ var over2000 = L.geoJson(buildingsWYears, {
 
 var bldg1980 = L.geoJson(buildingsWYears, {
     style: {
-            fillColor: '#ffeda0',
+        fillColor: '#ffeda0',
         weight: 1,
         opacity: 1,  
         color: 'white',
@@ -76,7 +71,7 @@ var bldg1980 = L.geoJson(buildingsWYears, {
 
 var bldg1960 = L.geoJson(buildingsWYears, {
     style: {
-            fillColor: '#fed976',
+        fillColor: '#fed976',
         weight: 1,
         opacity: 1,  
         color: 'white',
@@ -91,7 +86,7 @@ var bldg1960 = L.geoJson(buildingsWYears, {
 
 var bldg1940 = L.geoJson(buildingsWYears, {
     style: {
-            fillColor: '#feb24c',
+        fillColor: '#feb24c',
         weight: 1,
         opacity: 1,  
         color: 'white',
@@ -106,7 +101,7 @@ var bldg1940 = L.geoJson(buildingsWYears, {
 
 var bldg1920 = L.geoJson(buildingsWYears, {
     style: {
-    		fillColor: '#fd8d3c',
+    	fillColor: '#fd8d3c',
         weight: 1,
         opacity: 1,  
         color: 'white',
@@ -122,7 +117,7 @@ var bldg1920 = L.geoJson(buildingsWYears, {
 
 var bldg1900 = L.geoJson(buildingsWYears, {
     style: {
-    		fillColor: '#fc4e2a',
+    	fillColor: '#fc4e2a',
         weight: 1,
         opacity: 1,  
         color: 'white',
@@ -137,7 +132,7 @@ var bldg1900 = L.geoJson(buildingsWYears, {
 
 var pre1900 = L.geoJson(buildingsWYears, {
     style: {
-    		fillColor: '#e31a1c',
+    	fillColor: '#e31a1c',
         weight: 1,
         opacity: 1,  
         color: 'white',
@@ -149,6 +144,56 @@ var pre1900 = L.geoJson(buildingsWYears, {
     }
 }).addTo(mymap);
 
+
+//Functions used above to highlight buildings on hover and update info
+function onEachFeature(feature, layer) {
+    layer.on({
+        mouseover: highlightFeature,
+        mouseout: resetHighlight
+    });
+}
+
+function highlightFeature(e) {
+    var layer = e.target;
+
+    layer.setStyle({
+        color: '#666',
+    });
+
+    info.update(layer.feature.properties);
+}
+
+function resetHighlight(e) {
+    var layer = e.target;
+
+    layer.setStyle({
+        color: 'white',
+    });
+    
+    info.update();
+}
+
+
+//Create Leaflet control to display title and year information on hover
+var info = L.control();
+
+info.onAdd = function (mymap) {
+    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+    this.update();
+    return this._div;
+};
+
+// update the control based on feature properties passed
+info.update = function (props) {
+    this._div.innerHTML = '<h4>Age of Burlington Buildings</h4>' +  (props ?
+        'Built in ' + props.YearBlt
+        : 'Hover over a building');
+};
+
+info.addTo(mymap);
+
+
+//Add each Layer to a Leaflet control to allow toggling on and off
 var overlayMaps = {
     "<span style='background-color: #e31a1c'>Before 1900</span>": pre1900,
     "<span style='background-color: #fc4e2a'>1900-1919</span>": bldg1900,
@@ -161,58 +206,7 @@ var overlayMaps = {
 
 L.control.layers(null, overlayMaps, {collapsed: false, position: 'bottomright'}).addTo(mymap);
 
-var info = L.control();
-
-info.onAdd = function (mymap) {
-    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
-    this.update();
-    return this._div;
-};
-
-// method that we will use to update the control based on feature properties passed
-info.update = function (props) {
-    this._div.innerHTML = '<h4>Age of Burlington Buildings</h4>' +  (props ?
-        'Built in ' + props.YearBlt + ''
-        : 'Hover over a building');
-};
-
-info.addTo(mymap);
-
-
-function highlightFeature(e) {
-    var layer = e.target;
-
-    layer.setStyle({
-        color: '#666',
-    });
-
-    if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
-        layer.bringToFront();
-    }
-    info.update(layer.feature.properties);
-}
-
-function resetHighlight(e) {
-		var layer = e.target;
-
-    layer.setStyle({
-        color: 'white',
-    });
-    
-    info.update();
-}
-
-function onEachFeature(feature, layer) {
-    layer.on({
-        mouseover: highlightFeature,
-        mouseout: resetHighlight
-    });
-}
-
-
-
 </script>
 
-
- </body>
+</body>
 </html>
